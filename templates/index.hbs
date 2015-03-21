@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>{{title}}</title>
+        <style type="text/css">
+        	canvas { border: 1px solid #ccc }
+        </style>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+        <script src="/socket.io/socket.io.js"></script>
+		<script>
+			
+
+			$(function () {
+				var start = true
+				$('.connect').click(function(){
+					$.get('/connect');
+				});
+				$('.disconnect').click(function(){
+					$.get('/disconnect');
+				});
+
+				var canvas = document.getElementById('paint');
+			    if (!canvas) {
+			      alert('Error: I cannot find the canvas element!');
+			      return;
+			    }
+
+			    if (!canvas.getContext) {
+			      alert('Error: no canvas.getContext!');
+			      return;
+			    }
+
+			    // Get the 2D canvas context.
+			    var context = canvas.getContext('2d');
+			    if (!context) {
+			      alert('Error: failed to getContext!');
+			      return;
+			    }
+
+  				var socket = io.connect('http://localhost:8000');
+				socket.on('coord', function (data) {
+					if(start) {
+						start = false;
+						context.moveTo(data.x, data.y);
+					} else {
+						context.lineTo(data.x, data.y);
+        				context.stroke();
+					}
+					
+				});
+			})
+		</script>
+    </head>
+    <body>
+        <div>
+            <h1>{{message}}</h1>
+            <button class="connect">Connect</button><button class="disconnect">Disconnect</button><br>
+            <canvas id="paint" width="1024" height="1024"></canvas>
+        </div>
+    </body>
+</html>
