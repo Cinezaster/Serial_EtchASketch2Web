@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>{{title}}</title>
+        <style type="text/css">
+        	canvas { border: 1px solid #ccc }
+        </style>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+                <script src="/socket.io/socket.io.js"></script>
+		<script>
+			$(function () {
+				var socket = io.connect('http://localhost:8000');
+				var width = $(document).width();
+				var height = $(document).height();
+				$('.dimentions').html("W: "+ width + ", H: "+ height);
+				var x,y;
+				$(document).mousemove(function(event){
+					x = event.pageX;
+					y = event.pageY;
+				});
+
+				setInterval(function(){ 
+					$('.position').html("x: "+ x + ", y: "+ y);
+					$('.mousepos').css({
+						top: y-10,
+						left: x-10
+					});
+					var newX = Math.round(getmap(x,width,300));
+					var newY = Math.round(getmap(y,height,300));
+					var newPos = {"pos":{"x":newX,"y":newY}};
+					$('.newposition').html("x: "+ newX + ", y: "+ newY);
+					socket.emit('xy', newPos);
+				}, 500);
+
+				function getmap(value, max, maxlim) {
+				    return value/max * (maxlim);
+				}
+			});
+		</script>
+    </head>
+    <body>
+        <div style="position:relative;">
+            <h1>{{message}}</h1>
+            <div class="dimentions"></div>
+            <div class="position"></div>
+            <div class="newposition"></div>
+            <div style="position:absolute; width:20px; height:20px; border-radius:20px; background:black;" class="mousepos"></div>
+        </div>
+    </body>
+</html>

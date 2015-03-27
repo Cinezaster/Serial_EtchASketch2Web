@@ -1,0 +1,48 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>{{title}}</title>
+    </head>
+    <body>
+        <div>
+            <table style="border-spacing: 0; padding-left:100px;">
+            	<tr>
+            		<td width="12"></td>
+            		<td width="48"></td>
+            		<td width="12"></td>
+            		<td width="62"></td>
+            		<td width="12"></td>
+            		<td width="48"></td>
+            		<td width="12"></td>
+            		<td width="50"></td>
+            		<td></td>
+            	</tr>
+            	{{#each midiJSON}}
+            	<tr style="height:62px">
+            		<td style="background:black;">&nbsp;</td>
+            		<td style="background:rgba(0,0,0,{{duration}});">&nbsp;</td>
+            		<td style="background:black;">&nbsp;</td>
+            		<td style="background:rgba(0,0,0,{{octaaf}});">&nbsp;</td>
+            		<td style="background:black;">&nbsp;</td>
+            		<td style="background:rgba(0,0,0,{{tone}});">&nbsp;</td>
+            		<td style="background:black;">&nbsp;</td>
+            		<td></td>
+            		<td>Duration: {{original.duration}} uS, octaaf: {{original.octaaf}}, toon: {{original.tone}}</td>
+            	</tr>
+            	<tr style="height:36px">
+            		<td style="background:black;">&nbsp;</td>
+            		<td style="background:white;">&nbsp;</td>
+            		<td style="background:black;">&nbsp;</td>
+            		<td style="background:white;">&nbsp;</td>
+            		<td style="background:black;">&nbsp;</td>
+            		<td style="background:white;">&nbsp;</td>
+            		<td style="background:black;">&nbsp;</td>
+            		<td></td>
+            		<td></td>
+            	</tr>
+            	{{/each}}
+            </table>
+        </div>
+    </body>
+</html>
