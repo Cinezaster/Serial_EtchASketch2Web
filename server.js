@@ -1,206 +1,105 @@
-var Hapi = require('hapi');
-var serialport = require("serialport");
-var SerialPort = serialport.SerialPort;
-var sp;
-var fs = require('fs');
-var midiConverter = require('midi-converter');
+const app = require('express')()
+const http = require('http').createServer(app)
+const exphbs = require('express-handlebars')
+const port = 3000
+const Serialport = require('serialport')
 
+let globalSocket, sp
 
-// Create a server with a host and port
-var server = new Hapi.Server();
-server.connection({ 
-    host: 'localhost', 
-    port: 8000 
-});
-var globalSocket;
+const io = require('socket.io')(http)
 
-var io = require("socket.io")(server.listener);
+app.engine('handlebars', exphbs())
+app.set('view engine', 'handlebars')
 
-server.views({
-    engines: {
-        hbs: require('handlebars')
-    },
-    path: __dirname + '/templates'
-});
-
-io.on("connection", function (socket) {
-	console.log('connected');
-	globalSocket = socket;
-});
-
-
-server.route({
-    method: 'GET',
-    path: '/',
-    handler: function (request, reply) {
-
-
-    	var context = {
-	        title: 'Views Example',
-	        message: 'mlksdj' 
-	    };
-        return reply.view('index.hbs',context);
+io.on('connection', function (socket) {
+  console.log('connected')
+  socket.on('xy', (data) => {
+    const output = {
+      pos: {
+        x: data.pos.x,
+        y: data.pos.y
+      }
     }
-});
-
-server.route({
-    method: 'GET',
-    path: '/xy',
-    handler: function (request, reply) {
-    	var context = {
-	        title: 'Views Example',
-	        message: 'mlksdj' 
-	    };
-        return reply.view('xy.hbs',context);
+    if (sp && sp.isOpen) {
+      sp.write(JSON.stringify(output), function (err, results) {
+        console.log('err ' + err)
+        console.log('results ' + results)
+      })
+    } else {
+      console.info(output)
     }
-});
+  })
+  globalSocket = socket
+})
 
-server.route({
-    method: 'GET',
-    path: '/midi',
-    handler: function (request, reply) {
-    	var midiSong = fs.readFileSync('hot_butter-popcorn.mid', 'binary');
-		var jsonSong = midiConverter.midiToJson(midiSong);
-		var track = jsonSong.tracks[1];
+app.get('/', (req, res) => {
+  res.render('index')
+})
 
-		//fs.writeFileSync('example.json', JSON.stringify(jsonSong));
+app.get('/xy', (req, res) => {
+  res.render('xy')
+})
 
-		var toneArray = [1,1,0.7,0.7,0.65,0.65,0.6,0.6,0.55,0.5,0.5,0.45,0.45];
-		var octaafArray = [1,0.7,0.65,0.6,0.55,0.5,0.45];
-		var durationArray = [1,0.75,0.7,0.65,0.6,0.55,0.5,0.45,0.4,0.35,0.3];
+app.get('/list', async (req, res) => {
+  const serialPorts = await Serialport.list()
+  const ports = []
+  serialPorts.forEach((port) => {
+    ports.push(port.path)
+  })
+  return res.send(ports.join(', '))
+})
 
-		var parsedSong = [];
-
-		for (var i = 0; i < track.length; i++) {
-			var element = track[i];
-			var nextElement = track[i+1];
-			if (element.type === "channel" && element.subtype === "noteOn") {
-				var deltatimeOn = element.deltaTime;
-				var deltatimeOff = nextElement.deltaTime;
-				var duration = Math.round(((deltatimeOff - deltatimeOn)/0.002)/15000);
-				var noteNumber= element.noteNumber;
-
-				var octaaf = Math.ceil((noteNumber-23)/12);
-				var tone = (noteNumber-9)%12;
-
-				if (duration > 0) {
-					parsedSong.push({
-						duration: durationArray[duration],
-						octaaf: octaafArray[octaaf],
-						tone: toneArray[tone],
-						original: {
-							duration: duration*15000,
-							octaaf: octaaf,
-							tone: tone
-						}
-					});
-				}
-			}
-		}
-
-    	var context = {
-	        title: 'Views Example',
-	        midiJSON: parsedSong
-	    };
-        return reply.view('midi.hbs',context);
+app.get('/connect', async (req, res) => {
+  const serialPorts = await Serialport.list()
+  serialPorts.forEach((port) => {
+    if (port.manufacturer && port.manufacturer.includes('Arduino')) {
+      console.info(port)
+      sp = port
+      sp.update({ baudrate: 9600 }, (err) => { console.error(err) })
+      sp.open(serialConnectError)
+      Socket2Serial()
+      return res.sendStatus(200)
+    } else {
+      console.log(port)
     }
-});
+  })
+})
 
-server.route({
-    method: 'GET',
-    path: '/list',
-    handler: function (request, reply) {
-        serialport.list(function (err, ports) {
-	       	var text = "";
-			ports.forEach(function(port) {
-				text = text + port.comName;
-				text = text + ", ";
-				console.info(port);
-			});
-			reply(text);
-		});
-    }
-});
+app.get('/disconnect', (req, res) => {
+  sp.close(serialConnectError)
+  return res.sendStatus(200)
+})
 
-server.route({
-	method: 'GET',
-	path: '/connect',
-	handler: function (request, reply) {
-		serialport.list(function (err, ports) {
-			ports.forEach(function(port) {
-				if (port.manufacturer.contains("Arduino")) {
-					console.info(port);
-					sp = new SerialPort(port.comName, {
-						baudrate: 9600,
-						//parser: serialport.parsers.readline("\n")
-					});
-					//SerialConnect();
+const Socket2Serial = () => {
+  sp.on('open', function () {
+    console.log('Serial connectioin opened')
 
-					Socket2Serial();
-					return reply.continue();
+    sp.on('data', function (data) {
+      if (IsJsonString(data)) {
+        const jsonData = JSON.parse(data)
+        if (globalSocket !== 'undefined') {
+          console.log(jsonData)
+          globalSocket.emit('coord', jsonData)
+        }
+      }
+    })
+  })
+}
 
-
-				}
-			});
-		});
-	}
-});
-
-server.route({
-	method: 'GET',
-	path: '/disconnect',
-	handler: function (request, reply) {
-		sp.close();
-		return reply.continue();
-
-	}
-});
-
-Socket2Serial = function () {
-	sp.on("open", function () {
-		console.log("open");
-		if (globalSocket !== 'undefined') {
-			globalSocket.on("xy", function(data){
-				console.log(data);
-				var dataString = "{\"pos\":{\"x\":"+data.pos.x +",\"y\": "+data.pos.y+ "}}\n";
-				console.info(dataString);
-				sp.write(dataString, function(err, results) {
-				    console.log('err ' + err);
-				    console.log('results ' + results);
-				  });
-			});
-		}
-	});
-	
-};
-
-SerialConnect = function () {
-	sp.on("open", function () {
-		console.log("open");
-		sp.on('data', function(data) {
-			if (IsJsonString(data)) {
-				var jsonData = JSON.parse(data);
-				if (globalSocket !== 'undefined') {
-					console.log(jsonData);
-					globalSocket.emit('coord', jsonData);
-				}
-			}
-		});
-	});
-};
+const serialConnectError = (err) => {
+  console.error(err)
+}
 
 // Start the server
-server.start(function () {
-    console.log('Server running at:', server.info.uri);
-});
+http.listen(port, () => {
+  console.log(`Example app listening at http://localhost:${port}`)
+})
 
-String.prototype.contains = function(it) { return this.indexOf(it) != -1; };
-
-function IsJsonString(str) {
-    try {
-        JSON.parse(str);
-    } catch (e) {
-        return false;
-    }
-    return true;
+function IsJsonString (str) {
+  try {
+    JSON.parse(str)
+  } catch (e) {
+    return false
+  }
+  return true
 }

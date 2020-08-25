@@ -1,5 +1,4 @@
 #include <AccelStepper.h>
-
 #include <aJSON.h>
 
 unsigned long last_print = 0;
@@ -76,8 +75,8 @@ void processMessage(aJsonObject *msg)
   int steps4slider = abs(currentSliderPos - stepsLongLegPos);
 
   if(steps4boom > steps4slider){
-      Boom.setSpeed(1200);
-      Slider.setSpeed(1200*(steps4slider/steps4boom));
+    Boom.setSpeed(1200);
+    Slider.setSpeed(1200*(steps4slider/steps4boom));
   } else {
   	Slider.setSpeed(1200);
   	Boom.setSpeed(1200*(steps4boom/steps4slider));
