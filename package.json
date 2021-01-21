@@ -31,7 +31,7 @@
     "express-handlebars": "^5.1.0",
     "midi-converter": "^0.1.5",
     "serialport": "^9.0.1",
-    "socket.io": "^2.3.0"
+    "socket.io": "^2.4.0"
   },
   "devDependencies": {
     "eslint": "^7.7.0",
