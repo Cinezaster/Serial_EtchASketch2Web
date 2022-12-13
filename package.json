@@ -27,7 +27,7 @@
   },
   "homepage": "https://github.com/Cinezaster/Serial_EtchASketch2Web",
   "dependencies": {
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "express-handlebars": "^5.1.0",
     "midi-converter": "^0.1.5",
     "serialport": "^9.0.1",
